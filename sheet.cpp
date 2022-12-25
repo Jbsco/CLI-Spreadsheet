@@ -23,9 +23,9 @@ void display(Sheet &sheet){ // display current sheet
 
 int main(){
 	Sheet sheet;
-	while(1){
+	while(STAY){ // from sheet.h, global bool flag modified by extraction overload case event
 		display(sheet);
-		cout << "Delete cell (del A1), toggle display (tog), or input cell contents (A1=...): ";
+		sheet.menuFcn();
 		cin >> sheet;
 	}
 	return 0;
