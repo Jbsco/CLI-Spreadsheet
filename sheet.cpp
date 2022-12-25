@@ -1,6 +1,6 @@
 /*******************************************************************************
  *	INSTRUCTIONS: Write a program that allows a person to create a spreadsheet.
- *	BY: Jacob B. Seman, 3/22/2022
+ *	BY: Jacob B. Seman, 3/31/2022
 *******************************************************************************/
 #include"sheet.h"
 
@@ -9,8 +9,8 @@ using namespace std;
 void display(Sheet &sheet){ // display current sheet
 	// should call all cell-contained post-fix equations
 	for(int i=0;i<MAXROWS+2;i++) printf("\033[A\33[2K"); // clear 33 lines
-	cout << "Post-Fix_Spreadsheet" << setw(100) << setfill('_')
-			<< right << "Jacob_Seman" << setfill(' ') << endl; // print top border
+	cout << "Post-Fix_Spreadsheet" << setw(100) << setfill('_') // print title bar status
+		 << right << sheet.titleStat << setfill(' ') << endl; // print top border
 	for(int i=0;i<MAXROWS;i++){
 		printf("%02i",i); // print row numbers
 		for(int j=0;j<9;j++){
