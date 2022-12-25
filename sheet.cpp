@@ -1,8 +1,32 @@
-#include<iostream>
+/*******************************************************************************
+ *	INSTRUCTIONS: Write a program that allows a person to create a spreadsheet.
+ *	BY: Jacob B. Seman, 3/22/2022
+*******************************************************************************/
+#include"sheet.h"
 
 using namespace std;
 
+void display(Sheet &sheet){ // display current sheet
+	// should call all cell-contained post-fix equations
+	for(int i=0;i<MAXROWS+2;i++) printf("\033[A\33[2K"); // clear 33 lines
+	cout << "Post-Fix_Spreadsheet" << setw(100) << setfill('_')
+			<< right << "Jacob_Seman" << setfill(' ') << endl; // print top border
+	for(int i=0;i<MAXROWS;i++){
+		printf("%02i",i); // print row numbers
+		for(int j=0;j<9;j++){
+			// sheet will auto increment with successive insertion overloads
+			cout << '|' << setw(12) << left << sheet;
+			if(j==8) cout << '|' << endl;
+		}
+	}
+}
+
 int main(){
-	// reference "funMath.cpp" from spring 2021
+	Sheet sheet;
+	while(1){
+		display(sheet);
+		cout << "Delete cell (del A1) or input cell contents (A1=...): ";
+		cin >> sheet;
+	}
 	return 0;
 }
