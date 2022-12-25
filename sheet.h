@@ -4,6 +4,7 @@
 #include<sstream>
 #include<iomanip>
 #include<cstring>
+#include<stack>
 
 using namespace std;
 
@@ -12,6 +13,8 @@ const int MAXROWS=31;
 class Sheet{
 	int xP,yP; // position values used for printing to terminal
 	string value[9][MAXROWS]; // 270 cell locations, columns A-I, rows 0-30
+	stack<double> internal; // internal stack for parsing equations
+	bool disp; // display flag, 0=default (display values) 1=flagged (display raw cell contents)
 	public:
 		Sheet(){
 			xP=0; // init print positions
@@ -22,6 +25,8 @@ class Sheet{
 					value[i][j]=""; // init all other cells
 				}
 			}
+			internal.push(0); // provision for a "bottom out" value
+			disp=0;
 		}
 		friend istream &operator >>(istream &in,Sheet &other){
 			string temp;
@@ -32,6 +37,10 @@ class Sheet{
 			int i=0,y;
 			if(temp.substr(0,3)=="del"){ // clear cell contents
 				other.delCell(temp.substr(4),other);
+				return in;
+			}
+			else if(temp.substr(0,3)=="tog"){ // toggle cell display mode
+				other.disp=!other.disp; // toggle disp variable
 				return in;
 			}
 			while(!parse.eof()){ // parse coords and initialize raw contents
@@ -49,7 +58,10 @@ class Sheet{
 			// check for empty cell
 			if(other.value[other.xP][other.yP].empty()) out << "";
 			// parse contents on print (allows for live referencing)
-			else out << other.contentParse(other.value[other.xP][other.yP]);
+			else{
+				if(!other.disp) out << other.contentParse(other.value[other.xP][other.yP]);
+				else out << other.value[other.xP][other.yP]; // output raw cell contents
+			}
 			if(other.xP==8){ // increment print coords, reset if
 				other.xP=0;
 				if(other.yP==MAXROWS-1) other.yP=0;
@@ -85,32 +97,49 @@ class Sheet{
 				stringstream parse(temp);
 				string subTemp;
 				int i=0;
-				double xVar,yVar;
-				char math;
-				while(!parse.eof()){
+				while(!parse.eof()){ // parse stringstream and use stack to allow chaining equations
 					getline(parse,subTemp,' ');
-					if(!i){
-						if(subTemp[0]>=65&&subTemp[0]<=73){ // if referencing cell
-							int y=stoi(subTemp.substr(1));
-							xVar=stod(contentParse(value[subTemp[0]-65][y]));
-						}
-						else xVar=stod(subTemp); // if double
+					if(subTemp[0]>=65&&subTemp[0]<=73){ // if referencing cell
+						int x=subTemp[0]-65;
+						int y=stoi(subTemp.substr(1));
+						internal.push(stod(contentParse(value[x][y]))); // push parse to stack
 					}
-					else if(i==1){
-						if(subTemp[0]>=65&&subTemp[0]<=73){ // if referencing cell
-							int y=stoi(subTemp.substr(1));
-							yVar=stod(contentParse(value[subTemp[0]-65][y]));
+					else if(subTemp=="+"||
+							subTemp=="-"||
+							subTemp=="*"||
+							subTemp=="/"){
+						if(subTemp=="+"){
+							double a=internal.top();
+							internal.pop();
+							double b=internal.top();
+							internal.pop();
+							internal.push(a+b);	
+						} else if(subTemp=="-"){
+							double b=internal.top();
+							internal.pop();
+							double a=internal.top();
+							internal.pop();
+							internal.push(a-b);
+						} else if(subTemp=="*"){
+							double b=internal.top();
+							internal.pop();
+							double a=internal.top();
+							internal.pop();
+							internal.push(a*b);
+						} else if(subTemp=="/"){
+							double b=internal.top();
+							internal.pop();
+							double a=internal.top();
+							internal.pop();
+							internal.push(a/b);
 						}
-						else yVar=stod(subTemp); // if double
 					}
-					else if(i==2) math=subTemp[0];
+					else internal.push(stod(subTemp)); // if double push to stack
 					i++;
 				}
-				if(math=='+') return to_string(xVar+yVar);
-				else if(math=='-') return to_string(xVar-yVar);
-				else if(math=='*') return to_string(xVar*yVar);
-				else if(math=='/') return to_string(xVar/yVar);
-				else return "NULL";
+				string retOut=to_string(internal.top());
+				internal.pop();
+				return retOut;
 			}
 		}
 		void delCell(string temp,Sheet &other){

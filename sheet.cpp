@@ -25,7 +25,7 @@ int main(){
 	Sheet sheet;
 	while(1){
 		display(sheet);
-		cout << "Delete cell (del A1) or input cell contents (A1=...): ";
+		cout << "Delete cell (del A1), toggle display (tog), or input cell contents (A1=...): ";
 		cin >> sheet;
 	}
 	return 0;
