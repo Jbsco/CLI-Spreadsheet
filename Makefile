@@ -1,10 +1,15 @@
-# name of executable
-EXEC=sheet
-# source files - dependencies
-SRC=sheet.cpp
+EXEC=3-22-22-spreadsheet
 
-# text replacement
-${EXEC}: sheet.h ${SRC} ${EXEC}.cpp
-	g++ -g ${EXEC}.cpp ${SRC} -o ${EXEC} -Wall
-# '$@' is same as '${EXEC}'
-# '$<' is same as everything in dependency list
+INCLUDES=sheet.h
+
+${EXEC}: ${INCLUDES} ${EXEC}.cpp Makefile
+	g++ -g ${EXEC}.cpp -o ${EXEC} -Wall
+
+run: ${EXEC}
+	 ./${EXEC}
+
+debug: ${EXEC}
+	gdb ${EXEC}
+
+clean:
+	rm ${EXEC}
