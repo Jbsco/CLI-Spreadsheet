@@ -6,6 +6,7 @@
 #include<cstring>
 #include<fstream>
 #include<stack>
+#include<time.h>
 
 using namespace std;
 
@@ -17,9 +18,10 @@ class Sheet{
 	string value[9][MAXROWS]; // 270 cell locations, columns A-I, rows 0-30
 	stack<double> internal; // internal stack for parsing equations
 	bool disp; // display flag, 0=default (display values) 1=flagged (display raw cell contents)
-	string menu[2];
+	string menu[2]; // two states for menu options display
 	bool menuFlag; // flag, 0=default (default menu) 1=flagged (file/quit operations)
 	public:
+		string titleStat; // title bar status
 		Sheet(){
 			xP=0; // init print positions
 			yP=0;
@@ -33,7 +35,8 @@ class Sheet{
 			disp=0;
 			menuFlag=0;
 			menu[0]="Menu toggle (menu), delete cell (del A1), toggle display (tog), or input cell contents (A1=...): ";
-			menu[1]="Menu toggle (menu), quit (quit), save (save), or load (load): ";
+			menu[1]="Menu toggle (menu), quit (quit), save (save filename), or load (load filename): ";
+			titleStat="";
 		}
 		void menuFcn(){
 			cout << menu[menuFlag];
@@ -62,20 +65,89 @@ class Sheet{
 				return in;
 			}
 			else if(other.menuFlag&&temp.substr(0,4)=="save"){
-				// TODO: implement save to single file option
+				string filename=temp.substr(5); // get filename contents
+				filename.append(".csv"); // append file type
+				other.yP=1; // skip column headers
+				ofstream data;
+				data.open(filename); // use prior filename input
+				for(int i=1;i<MAXROWS;i++){
+					while(other.xP<9){
+						data << (char)(other.xP+65) << other.yP << '=' << other.value[other.xP][other.yP] << ',';
+						other.xP++;
+					}
+					other.xP=0,other.yP++;
+					data << endl;
+				}
+				other.xP=0,other.yP=0;
+				data.close();
+				// modify title bar string to include name of file saved and local time
+				other.titleStat="Saved ";
+				other.titleStat.append(filename);
+				other.titleStat.append(" at ");
+				// get local time
+				time_t rawtime;
+				struct tm *timeinfo;
+				char tempTime[10];
+				time(&rawtime);
+				timeinfo=localtime(&rawtime);
+				strftime(tempTime,10,"%I:%M%p!",timeinfo);
+				// append
+				other.titleStat.append(tempTime);
+				other.menuFlag=!other.menuFlag;
 				return in;
 			}
 			else if(other.menuFlag&&temp.substr(0,4)=="load"){
-				//  gets contents of dataFile line-by-line
-				//  inf is the ifstream object
-				ifstream data;
-				string dIn;
-				data.open("sheet.csv"); // data file to store/read from
-				for(int i=0;i<MAXROWS;i++){
-					getline(data,dIn,','); // comma delimit
-					// TODO insert into current sheet
+				// clear sheet
+				for(int i=0;i<9;i++){
+					for(int j=1;j<MAXROWS;j++){
+						other.value[i][j]=""; // init all other cells
+					}
 				}
-				data.close();
+				// gets contents of dataFile line-by-line
+				// data is the ifstream object
+				string dIn,dRowIn,dEntry,errCell;
+				string filename=temp.substr(5); // get filename contents
+				filename.append(".csv"); // append file type
+				try{
+					ifstream data;
+					data.open(filename); // data file to store/read from
+					while(getline(data,dIn)){ // parse all lines in file
+						stringstream dataRow(dIn);
+						while(!dataRow.eof()){ // parse entire row
+							getline(dataRow,dRowIn,','); // comma delimit, get cell entries
+							stringstream dataEntry(dRowIn); // create stream
+							// cout << dRowIn << ' ' << dRowIn.find('=') << ' ' << dRowIn.length()-1 << endl; // testing cell entries and characteristics
+							int pos=dRowIn.find('='),len=dRowIn.length()-1;
+							if(pos!=len){ // if cell contains anything
+								i=0; // reset i to use for seperating two parts of cell entry
+								while(!dataEntry.eof()){ // parse coords and initialize raw contents
+									getline(dataEntry,dEntry,'='); // seperate cell assignment
+									if(!i){
+										x=dEntry[0]; // get x coord
+										y=stoi(dEntry.substr(1)); // get y coord
+										errCell=dEntry; // update errCell for title bar status display of last cell if exception caught
+									}
+									else other.value[x-65][y]=dEntry; // store raw contents
+									i++;
+								}
+							}
+						}
+					}
+					data.close();
+					// modify title bar string to add load success status
+					other.titleStat="Loaded ";
+					other.titleStat.append(filename);
+					other.titleStat.append(" successfully!");
+					other.menuFlag=!other.menuFlag;
+				} catch(exception &e){
+					// load exception, cell may have contained a comma (the delimiting character)
+					// modify title bar string to add load error status
+					other.titleStat="Load error in ";
+					other.titleStat.append(filename);
+					other.titleStat.append(" at cell ");
+					other.titleStat.append(errCell);
+					other.titleStat.append("! Check for errant comma and try again.");
+				}
 				return in;
 			}
 			else if(!other.menuFlag&&temp.find("=")!=string::npos){
@@ -102,7 +174,7 @@ class Sheet{
 			else{
 				if(!other.disp){
 					try{
-						out << other.contentParse(other.value[other.xP][other.yP]);
+						out << other.contentParse(other.value[other.xP][other.yP]).substr(0,12);
 					} catch(exception &e){
 						/* this section of code alters the cell with an invalid reference, replacing prior contents
 						// output & set cell to "REF ERR" (signify reference error) but allow continued printing
@@ -110,10 +182,10 @@ class Sheet{
 						errIn << (char)(other.xP+65) << other.yP << "=REF ERR"; // build new string in format "A1=REF ERR"
 						errIn >> other; // update cell with error state
 						*/
-						out << "REF_ERR<<113"; // print error message to cell location
+						out << "REF_ERR<<145"; // print error message to cell location
 					}
 				}
-				else out << other.value[other.xP][other.yP]; // output raw cell contents
+				else out << other.value[other.xP][other.yP].substr(0,12); // output raw cell contents
 			}
 			if(other.xP==8){ // increment print coords, reset if
 				other.xP=0;
@@ -139,7 +211,7 @@ class Sheet{
 						return temp;
 					} catch(exception &e){
 						// reference error likely, return error
-						return "REF_ERRcp142";
+						return "REF_ERRcp174";
 					}
 				}
 				else{
@@ -164,7 +236,7 @@ class Sheet{
 							internal.push(stod(contentParse(value[x][y]))); // push parse to stack
 						} catch(exception &e){
 							// reference error likely, return error
-							return "REF_ERRcp167";
+							return "REF_ERRcp199";
 						}
 					}
 					else if(subTemp=="+"||
@@ -199,7 +271,7 @@ class Sheet{
 							}
 						} catch(exception &e){
 							// return "REF ERR" (reference error) but allow continued input
-							return "REF_ERRcp202";
+							return "REF_ERRcp234";
 						}
 					}
 					else internal.push(stod(subTemp)); // if double push to stack
